@@ -1,0 +1,70 @@
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --bg-dark: #090d16;
+  --panel-bg: rgba(13, 20, 36, 0.75);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent-glow: rgba(59, 130, 246, 0.4);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body,
+html {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+.app-root-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+}
+
+.app-header {
+  height: 60px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 1000;
+
+  .brand {
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+.viewport-section {
+  flex: 1;
+  position: relative;
+}
+
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
