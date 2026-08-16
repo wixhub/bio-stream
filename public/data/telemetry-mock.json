@@ -1,0 +1,26 @@
+[
+  {
+    "id": "node-001",
+    "subjectId": "Avian-Alpha-99",
+    "species": "AVIAN_MIGRATORY",
+    "timestamp": "2026-06-06T12:00:00Z",
+    "coordinates": { "lat": 48.8566, "lng": 2.3522 },
+    "telemetry": { "heartRateBpm": 142, "bodyTemperatureC": 39.2, "activityLevelIndex": 8.4 }
+  },
+  {
+    "id": "node-002",
+    "subjectId": "Marine-Beta-04",
+    "species": "MARINE_CETACEAN",
+    "timestamp": "2026-06-06T12:00:00Z",
+    "coordinates": { "lat": 34.0522, "lng": -118.2437 },
+    "telemetry": { "heartRateBpm": 65, "bodyTemperatureC": 36.5, "activityLevelIndex": 4.1 }
+  },
+  {
+    "id": "node-003",
+    "subjectId": "Ungulate-Gamma-12",
+    "species": "TERRESTRIAL_UNGULATE",
+    "timestamp": "2026-06-06T12:00:00Z",
+    "coordinates": { "lat": -1.2921, "lng": 36.8219 },
+    "telemetry": { "heartRateBpm": 88, "bodyTemperatureC": 38.1, "activityLevelIndex": 6.7 }
+  }
+]
