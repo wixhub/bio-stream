@@ -1,0 +1,21 @@
+<main class="app-root-layout">
+  <header class="app-header">
+    <div class="brand">
+      <h1>Bio-Telemetry Spatial Visualizer</h1>
+      <span class="subtitle">Advanced Migration Mapping Engine </span>
+    </div>
+  </header>
+  <section class="viewport-section">
+    <div class="spatial-viewport">
+      <div id="leaflet-spatial-canvas" class="map-canvas"></div>
+
+      <div class="overlay-hud">
+        <app-telemetry-filters (filterChange)="onFilterUpdated($event)" />
+
+        @defer (on idle) {
+          <app-telemetry-analytics [records]="filteredRecords()" />
+        }
+      </div>
+    </div>
+  </section>
+</main>
