@@ -1,0 +1,25 @@
+<div class="analytics-card glass-panel">
+  <h4>Telemetry Vector Analytics</h4>
+  <div class="metric-grid">
+    <div class="metric">
+      <span class="label">Active Nodes</span>
+      <span class="value">{{ records().length }}</span>
+    </div>
+    <div class="metric">
+      <span class="label">Avg Heart Rate</span>
+      <span class="value">
+        @if (records().length > 0) {
+          {{
+            (
+              records().reduce((acc, curr) => acc + curr.telemetry.heartRateBpm, 0) /
+              records().length
+            ).toFixed(1)
+          }}
+          BPM
+        } @else {
+          0 BPM
+        }
+      </span>
+    </div>
+  </div>
+</div>

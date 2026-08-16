@@ -1,0 +1,38 @@
+/* src/app/features/telemetry-analytics/telemetry-analytics.component.scss */
+.analytics-card {
+  h4 {
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    .metric {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+
+      .label {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        letter-spacing: 0.05em;
+      }
+
+      .value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 4px;
+        color: #38bdf8;
+      }
+    }
+  }
+}
