@@ -1,24 +1,46 @@
 import { Component, output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { TelemetryFilterModel, SpeciesType } from '../../core/models/telemetry.model';
 
 @Component({
   selector: 'app-telemetry-filters',
-  imports: [CommonModule, FormsModule],
   templateUrl: './telemetry-filters.html',
   styleUrl: './telemetry-filters.scss',
 })
 export class TelemetryFilters {
-  public filterChange = output<TelemetryFilterModel>();
+  public readonly filterChange = output<TelemetryFilterModel>();
 
-  // Stable Signals for Signal Form management & reactive state
-  public species = signal<SpeciesType | 'ALL'>('ALL');
-  public minHeartRate = signal<number>(40);
-  public maxHeartRate = signal<number>(180);
-  public liveStreamEnabled = signal<boolean>(true);
+  // Stable Signals for reactive state management
+  public readonly species = signal<SpeciesType | 'ALL'>('ALL');
+  public readonly minHeartRate = signal<number>(40);
+  public readonly maxHeartRate = signal<number>(180);
+  public readonly liveStreamEnabled = signal<boolean>(true);
 
-  public onSubmit(): void {
+  // Methods for handling native event bindings safely
+  public onSpeciesChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as SpeciesType | 'ALL';
+    this.species.set(value);
+    this.emitChanges();
+  }
+
+  public onMinHeartRateChange(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    this.minHeartRate.set(value);
+    this.emitChanges();
+  }
+
+  public onMaxHeartRateChange(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    this.maxHeartRate.set(value);
+    this.emitChanges();
+  }
+
+  public onLiveStreamChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).checked;
+    this.liveStreamEnabled.set(value);
+    this.emitChanges();
+  }
+
+  private emitChanges(): void {
     this.filterChange.emit({
       species: this.species(),
       minHeartRate: this.minHeartRate(),

@@ -1,9 +1,9 @@
 <aside class="filter-panel glass-panel">
   <h3>Spatial Telemetry Filters</h3>
-  <form (submit)="$event.preventDefault(); onSubmit()">
+  <form (submit)="$event.preventDefault()">
     <div class="form-group">
       <label>Target Species</label>
-      <select [ngModel]="species()" (ngModelChange)="species.set($event)" name="species">
+      <select [value]="species()" (change)="onSpeciesChange($event)">
         <option value="ALL">All Species Systems</option>
         <option value="AVIAN_MIGRATORY">Avian Migratory</option>
         <option value="MARINE_CETACEAN">Marine Cetacean</option>
@@ -17,9 +17,8 @@
         type="range"
         min="20"
         max="120"
-        [ngModel]="minHeartRate()"
-        (ngModelChange)="minHeartRate.set(+$event)"
-        name="minHR"
+        [value]="minHeartRate()"
+        (input)="onMinHeartRateChange($event)"
       />
     </div>
 
@@ -29,9 +28,8 @@
         type="range"
         min="121"
         max="220"
-        [ngModel]="maxHeartRate()"
-        (ngModelChange)="maxHeartRate.set(+$event)"
-        name="maxHR"
+        [value]="maxHeartRate()"
+        (input)="onMaxHeartRateChange($event)"
       />
     </div>
 
@@ -39,9 +37,8 @@
       <label>
         <input
           type="checkbox"
-          [ngModel]="liveStreamEnabled()"
-          (ngModelChange)="liveStreamEnabled.set($event)"
-          name="liveStream"
+          [checked]="liveStreamEnabled()"
+          (change)="onLiveStreamChange($event)"
         />
         Enable Real-Time Ingestion
       </label>
