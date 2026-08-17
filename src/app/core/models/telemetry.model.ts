@@ -1,4 +1,3 @@
-// src/app/core/models/telemetry.model.ts
 export type SpeciesType = 'AVIAN_MIGRATORY' | 'MARINE_CETACEAN' | 'TERRESTRIAL_UNGULATE';
 
 export interface GeoCoordinates {

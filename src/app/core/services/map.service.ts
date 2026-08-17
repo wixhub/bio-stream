@@ -1,4 +1,3 @@
-// src/app/core/services/leaflet-map.service.ts
 import { Injectable, DestroyRef, inject } from '@angular/core';
 import * as L from 'leaflet';
 import { BioTelemetryRecord } from '../models/telemetry.model';
