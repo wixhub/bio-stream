@@ -2,9 +2,28 @@
   <header class="app-header">
     <div class="brand">
       <h1>Bio-Telemetry Spatial Visualizer</h1>
-      <span class="subtitle">Advanced Migration Mapping Engine </span>
+      <span class="subtitle">Advanced Migration Mapping Engine</span>
+    </div>
+
+    <!-- Data Source Switcher Toolbar -->
+    <div class="data-source-switcher">
+      <button type="button" class="btn-source" (click)="switchToMockDataset()">
+        Load Mock Data
+      </button>
+      <div class="filter-group">
+        <select id="studySelect" (change)="onStudyChange($event)" class="study-dropdown">
+          <option>Select Research Study</option>
+          <option value="7006760">Northern Elephant Seals (Seals)</option>
+          <option value="2911040">Galapagos Albatrosses (Birds)</option>
+          <option value="10700240">Galapagos Tortoises (Reptiles)</option>
+        </select>
+      </div>
+      <button type="button" class="btn-source live" (click)="switchToLiveDataset(selectedStudyId)">
+        Fetch Live API
+      </button>
     </div>
   </header>
+
   <section class="viewport-section">
     <div class="spatial-viewport">
       <div id="leaflet-spatial-canvas" class="map-canvas"></div>

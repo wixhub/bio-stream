@@ -1,73 +1,103 @@
-import {
-  Component,
-  AfterViewInit,
-  OnDestroy,
-  inject,
-  signal,
-  effect,
-  computed,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, inject, signal, effect, AfterViewInit, DestroyRef } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { of, switchMap, catchError } from 'rxjs';
 import { LeafletMapService } from '../../core/services/map.service';
 import { TelemetryStreamService } from '../../core/services/stream.service';
-import { TelemetryFilters } from '../telemetry-filters/telemetry-filters';
+import { BioTelemetryRecord, TelemetryFilterModel } from '../../core/models/telemetry.model';
 import { TelemetryAnalytics } from '../telemetry-analytics/telemetry-analytics';
-import { TelemetryFilterModel } from '../../core/models/telemetry.model';
+import { TelemetryFilters } from '../telemetry-filters/telemetry-filters';
 
 @Component({
   selector: 'app-map-container',
-  imports: [CommonModule, TelemetryFilters, TelemetryAnalytics],
+  imports: [TelemetryAnalytics, TelemetryFilters],
   templateUrl: './map-container.html',
   styleUrl: './map-container.scss',
 })
 export class MapContainer implements AfterViewInit {
-  private mapService = inject(LeafletMapService);
-  private telemetryStreamService = inject(TelemetryStreamService);
+  private readonly mapService = inject(LeafletMapService);
+  private readonly telemetryService = inject(TelemetryStreamService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  // Bridge high-frequency RxJS telemetry stream into Angular Signals via toSignal
-  private rawTelemetry = toSignal(this.telemetryStreamService.telemetryStream$, {
-    initialValue: [],
-  });
+  // Mode switcher: 'mock' on initial load, or a specific study ID for live data
+  public readonly dataSourceMode = signal<'mock' | string>('mock');
 
-  // Filter Signal state
-  public filters = signal<TelemetryFilterModel>({
+  public selectedStudyId: string = '7006760';
+
+  onStudyChange(event: any) {
+    this.selectedStudyId = event.target.value;
+  }
+
+  // Reactive stream that switches between local mock and live API based on dataSourceMode signal
+  private readonly rawTelemetryRecords = toSignal(
+    toObservable(this.dataSourceMode).pipe(
+      switchMap((mode) => {
+        if (mode === 'mock') {
+          return this.telemetryService.getLocalMockTelemetry();
+        } else {
+          return this.telemetryService.getLiveTelemetry(mode);
+        }
+      }),
+      catchError(() => of([] as BioTelemetryRecord[])),
+    ),
+    { initialValue: [] as BioTelemetryRecord[] },
+  );
+
+  public readonly filters = signal<TelemetryFilterModel>({
     species: 'ALL',
     minHeartRate: 20,
     maxHeartRate: 220,
     liveStreamEnabled: true,
   });
 
-  // Computed state combining telemetry stream with reactive filters
-  public filteredRecords = computed(() => {
-    const data = this.rawTelemetry();
-    const currentFilter = this.filters();
-
-    if (!currentFilter.liveStreamEnabled) return [];
-
-    return data.filter((record) => {
-      const speciesMatch =
-        currentFilter.species === 'ALL' || record.species === currentFilter.species;
-      const hrMatch =
-        record.telemetry.heartRateBpm >= currentFilter.minHeartRate &&
-        record.telemetry.heartRateBpm <= currentFilter.maxHeartRate;
-      return speciesMatch && hrMatch;
-    });
-  });
+  public readonly filteredRecords = signal<BioTelemetryRecord[]>([]);
 
   constructor() {
-    // Effect handling declarative map rendering synchronization with computed signal outputs
     effect(() => {
-      const records = this.filteredRecords();
-      this.mapService.renderTelemetryPoints(records);
+      const records = this.rawTelemetryRecords();
+      const currentFilters = this.filters();
+
+      if (!currentFilters.liveStreamEnabled) {
+        this.filteredRecords.set([]);
+        return;
+      }
+
+      const processed = records.filter((record) => {
+        const matchesSpecies =
+          currentFilters.species === 'ALL' || record.species === currentFilters.species;
+        const matchesHR =
+          record.telemetry.heartRateBpm >= currentFilters.minHeartRate &&
+          record.telemetry.heartRateBpm <= currentFilters.maxHeartRate;
+        return matchesSpecies && matchesHR;
+      });
+
+      this.filteredRecords.set(processed);
+    });
+
+    effect(() => {
+      const activePoints = this.filteredRecords();
+      this.mapService.renderTelemetryPoints(activePoints);
     });
   }
 
   public ngAfterViewInit(): void {
     this.mapService.initializeMap('leaflet-spatial-canvas', [15.0, 10.0], 3);
+
+    this.destroyRef.onDestroy(() => {
+      this.mapService.disposeMap();
+    });
   }
 
   public onFilterUpdated(newFilters: TelemetryFilterModel): void {
     this.filters.set(newFilters);
+  }
+
+  // Method triggered by user action in UI to switch to live data from Cloudflare Worker
+  public switchToLiveDataset(studyId: string): void {
+    this.dataSourceMode.set(studyId);
+  }
+
+  // Method to revert back to local mock data
+  public switchToMockDataset(): void {
+    this.dataSourceMode.set('mock');
   }
 }
