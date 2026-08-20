@@ -1,6 +1,12 @@
-import { Component, inject, signal, effect, AfterViewInit, DestroyRef } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { of, switchMap, catchError } from 'rxjs';
+import {
+  Component,
+  inject,
+  signal,
+  effect,
+  AfterViewInit,
+  DestroyRef,
+  ChangeDetectorRef,
+} from '@angular/core';
 import { LeafletMapService } from '../../core/services/map.service';
 import { TelemetryStreamService } from '../../core/services/stream.service';
 import { BioTelemetryRecord, TelemetryFilterModel } from '../../core/models/telemetry.model';
@@ -15,32 +21,16 @@ import { TelemetryFilters } from '../telemetry-filters/telemetry-filters';
 })
 export class MapContainer implements AfterViewInit {
   private readonly mapService = inject(LeafletMapService);
-  private readonly telemetryService = inject(TelemetryStreamService);
+  protected readonly telemetryService = inject(TelemetryStreamService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cd = inject(ChangeDetectorRef);
 
-  // Mode switcher: 'mock' on initial load, or a specific study ID for live data
-  public readonly dataSourceMode = signal<'mock' | string>('mock');
-
+  // Input model for custom study ID entry in the template
   public selectedStudyId: string = '7006760';
 
-  onStudyChange(event: any) {
-    this.selectedStudyId = event.target.value;
-  }
-
-  // Reactive stream that switches between local mock and live API based on dataSourceMode signal
-  private readonly rawTelemetryRecords = toSignal(
-    toObservable(this.dataSourceMode).pipe(
-      switchMap((mode) => {
-        if (mode === 'mock') {
-          return this.telemetryService.getLocalMockTelemetry();
-        } else {
-          return this.telemetryService.getLiveTelemetry(mode);
-        }
-      }),
-      catchError(() => of([] as BioTelemetryRecord[])),
-    ),
-    { initialValue: [] as BioTelemetryRecord[] },
-  );
+  // State signal to manage error notifications with a 12-second timeout
+  public readonly errorMessage = signal<string | null>(null);
+  private errorTimeoutId: any = null;
 
   public readonly filters = signal<TelemetryFilterModel>({
     species: 'ALL',
@@ -52,8 +42,21 @@ export class MapContainer implements AfterViewInit {
   public readonly filteredRecords = signal<BioTelemetryRecord[]>([]);
 
   constructor() {
+    // Monitor live stream resources and trigger persistent error banners if upstream failures occur
     effect(() => {
-      const records = this.rawTelemetryRecords();
+      const liveError = this.telemetryService.liveTelemetryResource.error();
+      const isMockActive = this.telemetryService.useMockFallback();
+
+      if (liveError && !isMockActive) {
+        this.showAutoClosingError(
+          `Failed to load live telemetry stream for Study ID "${this.telemetryService.selectedStudyId()}". Reverting to local mock dataset.`,
+        );
+      }
+    });
+
+    // Core effect to process records and apply active filters
+    effect(() => {
+      const records = this.telemetryService.telemetryRecords();
       const currentFilters = this.filters();
 
       if (!currentFilters.liveStreamEnabled) {
@@ -73,6 +76,7 @@ export class MapContainer implements AfterViewInit {
       this.filteredRecords.set(processed);
     });
 
+    // Effect to update map visualization markers whenever filtered records change
     effect(() => {
       const activePoints = this.filteredRecords();
       this.mapService.renderTelemetryPoints(activePoints);
@@ -87,17 +91,56 @@ export class MapContainer implements AfterViewInit {
     });
   }
 
+  /**
+   * Displays an inline error message that automatically hides after 12 seconds.
+   */
+  private showAutoClosingError(message: string): void {
+    if (this.errorTimeoutId) {
+      clearTimeout(this.errorTimeoutId);
+    }
+
+    this.errorMessage.set(message);
+    this.cd.markForCheck();
+
+    this.errorTimeoutId = setTimeout(() => {
+      this.errorMessage.set(null);
+      this.cd.markForCheck();
+    }, 12000);
+  }
+
+  /**
+   * Manually dismisses the error banner.
+   */
+  public dismissError(): void {
+    if (this.errorTimeoutId) {
+      clearTimeout(this.errorTimeoutId);
+      this.errorTimeoutId = null;
+    }
+    this.errorMessage.set(null);
+    this.cd.markForCheck();
+  }
+
+  public onStudyChange(event: any): void {
+    this.selectedStudyId = event.target.value;
+  }
+
   public onFilterUpdated(newFilters: TelemetryFilterModel): void {
     this.filters.set(newFilters);
   }
 
-  // Method triggered by user action in UI to switch to live data from Cloudflare Worker
+  /**
+   * Switches data source to live Cloudflare Worker proxy stream for the given study ID.
+   */
   public switchToLiveDataset(studyId: string): void {
-    this.dataSourceMode.set(studyId);
+    this.dismissError();
+    this.telemetryService.setStudyId(studyId);
   }
 
-  // Method to revert back to local mock data
+  /**
+   * Manually forces fallback to local static mock data.
+   */
   public switchToMockDataset(): void {
-    this.dataSourceMode.set('mock');
+    this.dismissError();
+    this.telemetryService.activateMockFallback();
   }
 }
