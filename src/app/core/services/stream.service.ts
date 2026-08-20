@@ -1,49 +1,52 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, map, catchError } from 'rxjs';
+import { Service, signal, computed } from '@angular/core';
+import { httpResource, HttpParams } from '@angular/common/http';
 import { BioTelemetryRecord, SpeciesType } from '../models/telemetry.model';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class TelemetryStreamService {
-  private readonly http = inject(HttpClient);
   private readonly workerBaseUrl = 'https://wispy-surf-c9db.rublin.workers.dev';
 
-  // Fetch local static mock data for initial fallback load
-  public getLocalMockTelemetry(): Observable<BioTelemetryRecord[]> {
-    return this.http.get<BioTelemetryRecord[]>('data/telemetry-mock.json').pipe(
-      catchError((error) => {
-        console.error('Failed to load local telemetry mock', error);
-        return of([]);
-      }),
-    );
-  }
+  // Reactive signals for parameters and fallback control
+  public readonly selectedStudyId = signal<string>('7006760');
+  public readonly useMockFallback = signal<boolean>(false);
 
-  /**
-   * Fetches live telemetry event records from Movebank via the Cloudflare Worker proxy.
-   * Parses incoming CSV text data into a strongly-typed BioTelemetryRecord array.
-   * Automatically falls back to local mock data if a 522 timeout or upstream error occurs.
-   *
-   * @param studyId Real public Movebank study ID (default '7006760' for Northern Elephant Seals)
-   */
-  public getLiveTelemetry(studyId: string = '7006760'): Observable<BioTelemetryRecord[]> {
-    const params = new HttpParams()
-      .set('entity_type', 'event')
-      .set('study_id', studyId)
-      .set('i_can_see_data', 'true');
+  // Resource for local static mock telemetry data
+  public readonly localMockResource = httpResource<BioTelemetryRecord[]>(
+    () => 'data/telemetry-mock.json',
+    {
+      defaultValue: [],
+    },
+  );
 
-    return this.http.get(this.workerBaseUrl, { params, responseType: 'text' }).pipe(
-      map((responseText: string) => {
-        // Handle Cloudflare error pages (e.g., error code 522) or empty responses
-        if (!responseText || responseText.includes('error code:') || responseText.includes('<p>')) {
+  // Dynamic resource for live telemetry streaming from Movebank via Cloudflare Worker proxy
+  public readonly liveTelemetryResource = httpResource<BioTelemetryRecord[]>(
+    () => {
+      // If mock fallback is manually forced, skip network call
+      if (this.useMockFallback()) return undefined;
+
+      const studyId = this.selectedStudyId();
+      const params = new HttpParams()
+        .set('entity_type', 'event')
+        .set('study_id', studyId)
+        .set('i_can_see_data', 'true');
+
+      return {
+        url: this.workerBaseUrl,
+        params,
+        responseType: 'text' as const,
+      };
+    },
+    {
+      defaultValue: [],
+      // Parse raw CSV text response into typed BioTelemetryRecord array
+      parse: (responseText: unknown): BioTelemetryRecord[] => {
+        const text = typeof responseText === 'string' ? responseText : '';
+        if (!text || text.includes('error code:') || text.includes('<p>')) {
           throw new Error('Cloudflare worker timeout or upstream Movebank error');
         }
 
-        const lines = responseText.split('\n').filter((l) => l.trim().length > 0);
-        if (lines.length < 2) {
-          return [];
-        }
+        const lines = text.split('\n').filter((l) => l.trim().length > 0);
+        if (lines.length < 2) return [];
 
         const delimiter = lines[0].includes('\t') ? '\t' : ',';
         const headers = lines[0].split(delimiter).map((h) => h.replace(/["']/g, '').trim());
@@ -81,16 +84,38 @@ export class TelemetryStreamService {
             } as BioTelemetryRecord;
           })
           .filter((record) => record.coordinates.lat !== 0 && record.coordinates.lng !== 0);
-      }),
-      catchError((error) => {
-        console.warn(
-          'Live stream failed due to timeout or network issue. Falling back to local mock data.',
-          error,
-        );
-        // Automatically fallback to local mock data so the map displays points successfully
-        return this.getLocalMockTelemetry();
-      }),
-    );
+      },
+    },
+  );
+
+  // Convenient computed signal to transparently fallback to local mock data on live error/timeout
+  public readonly telemetryRecords = computed(() => {
+    const liveError = this.liveTelemetryResource.error();
+    const liveData = this.liveTelemetryResource.value();
+
+    if (liveError || this.useMockFallback() || (liveData && liveData.length === 0)) {
+      return this.localMockResource.value() ?? [];
+    }
+    return liveData ?? [];
+  });
+
+  public readonly isLoading = computed(
+    () => this.liveTelemetryResource.isLoading() || this.localMockResource.isLoading(),
+  );
+
+  /**
+   * Triggers a query update for a new study ID
+   */
+  public setStudyId(studyId: string): void {
+    this.useMockFallback.set(false);
+    this.selectedStudyId.set(studyId);
+  }
+
+  /**
+   * Manually forces fallback to local mock data
+   */
+  public activateMockFallback(): void {
+    this.useMockFallback.set(true);
   }
 
   /**
@@ -104,7 +129,8 @@ export class TelemetryStreamService {
       lower.includes('seal') ||
       lower.includes('whale') ||
       lower.includes('dolphin') ||
-      lower.includes('shark')
+      lower.includes('shark') ||
+      lower.includes('cetacea')
     ) {
       return 'MARINE_CETACEAN';
     }
@@ -117,14 +143,6 @@ export class TelemetryStreamService {
     ) {
       return 'TERRESTRIAL_UNGULATE';
     }
-    return 'AVIAN_MIGRATORY';
-  }
-
-  private mapSpecies(taxon?: string): SpeciesType {
-    if (!taxon) return 'AVIAN_MIGRATORY';
-    const lower = taxon.toLowerCase();
-    if (lower.includes('cetacea') || lower.includes('whale')) return 'MARINE_CETACEAN';
-    if (lower.includes('ungulate') || lower.includes('deer')) return 'TERRESTRIAL_UNGULATE';
     return 'AVIAN_MIGRATORY';
   }
 }
