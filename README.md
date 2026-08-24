@@ -32,7 +32,7 @@ The application is built as an enterprise-grade Angular single-page application 
 
 - **Backend Endpoint**: 🔗 **[View Worker on Cloudflare Workers](https://wispy-surf-c9db.rublin.workers.dev/)**
 
-- **Data Attribution**: Telemetry data is accessed via the **Movebank API** (www.movebank.org) and provided by individual study contributors. Map tiles are powered by **CARTO** under CC BY 3.0, utilizing data from **OpenStreetMap** contributors.
+- **Data Attribution**: Telemetry data is accessed via the **[Movebank API](www.movebank.org)** and provided by individual study contributors. Map tiles are powered by **CARTO** under CC BY 3.0, utilizing data from **OpenStreetMap** contributors.
 
 ---
 
@@ -181,6 +181,6 @@ For more information on using the Angular CLI, including detailed command refere
 
 - **Data & Map Attribution**:
 
-  - Animal tracking data provided by **Movebank** (www.movebank.org) and individual researchers.
+  - Animal tracking data provided by **[Movebank](www.movebank.org)** and individual researchers.
 
   - Map tiles by **CARTO**, under CC BY 3.0. Data by **OpenStreetMap** contributors.
