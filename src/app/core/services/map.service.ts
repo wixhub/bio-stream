@@ -37,6 +37,11 @@ export class LeafletMapService {
 
     this.markerLayerGroup.addTo(this.mapInstance);
     this.vectorLayerGroup.addTo(this.mapInstance);
+
+    // Force Leaflet to recalculate container dimensions after DOM settlement
+    setTimeout(() => {
+      this.mapInstance?.invalidateSize();
+    }, 150);
   }
 
   /**
