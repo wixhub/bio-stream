@@ -104,7 +104,8 @@ export class TelemetryStreamService {
    * Computed signal that resolves final telemetry records (live or mock fallback)
    */
   public readonly telemetryRecords = computed(() => {
-    if (this.useMockFallback() || this.liveError()) {
+    // Fall back to local mock data if requested, if there's an error, or if live records are empty initially
+    if (this.useMockFallback() || this.liveError() || this.liveRecords().length === 0) {
       return this.localMockRecords();
     }
     return this.liveRecords();

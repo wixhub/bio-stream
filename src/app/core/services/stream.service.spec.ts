@@ -9,41 +9,53 @@ describe('TelemetryStreamService', () => {
   let service: TelemetryStreamService;
   let httpMock: HttpTestingController;
 
-  // Setup testing module and inject dependencies before each test
+  const mockRecordsPayload = [
+    {
+      id: 'mock-1',
+      subjectId: 'sub-mock',
+      species: 'AVIAN_MIGRATORY' as const,
+      timestamp: '2026-01-01T00:00:00Z',
+      coordinates: { lat: 10, lng: 20 },
+      telemetry: { heartRateBpm: 90, bodyTemperatureC: 38, activityLevelIndex: 0.5 },
+    },
+  ];
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [TelemetryStreamService, provideHttpClient(), provideHttpClientTesting()],
     });
 
-    service = TestBed.inject(TelemetryStreamService);
     httpMock = TestBed.inject(HttpTestingController);
-
-    // Flush the initial mock dataset request triggered in constructor
-    const mockReq = httpMock.expectOne('data/telemetry-mock.json');
-    mockReq.flush([
-      {
-        id: 'mock-1',
-        subjectId: 'sub-mock',
-        species: 'AVIAN_MIGRATORY',
-        timestamp: '2026-01-01T00:00:00Z',
-        coordinates: { lat: 10, lng: 20 },
-        telemetry: { heartRateBpm: 90, bodyTemperatureC: 38, activityLevelIndex: 0.5 },
-      },
-    ]);
   });
 
-  // Ensure no unmatched requests remain after each test
   afterEach(() => {
+    // Verifies that no unmatched HTTP requests are outstanding
     httpMock.verify();
   });
 
-  it('should be created and load initial mock dataset', () => {
+  it('should be created and load initial mock dataset', async () => {
+    // Explicitly inject the service inside this test so the constructor runs
+    service = TestBed.inject(TelemetryStreamService);
+
+    // Expect and flush the initial mock dataset request triggered by the constructor
+    const req = httpMock.expectOne('data/telemetry-mock.json');
+    req.flush(mockRecordsPayload);
+
+    // Wait asynchronously for the signal state update
+    await vi.waitFor(() => {
+      expect(service.telemetryRecords().length).toBe(1);
+    });
+
     expect(service).toBeTruthy();
-    expect(service.telemetryRecords().length).toBe(1);
     expect(service.telemetryRecords()[0].id).toBe('mock-1');
   });
 
-  it('should successfully fetch and parse CSV live telemetry data', () => {
+  it('should successfully fetch and parse CSV live telemetry data', async () => {
+    service = TestBed.inject(TelemetryStreamService);
+
+    // Satisfy the constructor mock request first
+    httpMock.expectOne('data/telemetry-mock.json').flush(mockRecordsPayload);
+
     const csvData =
       'event_id,individual_local_identifier,taxon_canonical_name,timestamp,location_lat,location_long\n' +
       '101,Bird-1,Phoebastria irrorata,2026-06-01T12:00:00Z,-0.5,-90.2';
@@ -51,40 +63,59 @@ describe('TelemetryStreamService', () => {
     service.setStudyId('2911040');
     expect(service.isLoading()).toBe(true);
 
-    const req = httpMock.expectOne((request) =>
+    const liveReq = httpMock.expectOne((request) =>
       request.url.includes('wispy-surf-c9db.rublin.workers.dev'),
     );
-    expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('study_id')).toBe('2911040');
+    expect(liveReq.request.method).toBe('GET');
+    expect(liveReq.request.params.get('study_id')).toBe('2911040');
 
-    req.flush(csvData);
+    liveReq.flush(csvData);
 
-    expect(service.isLoading()).toBe(false);
+    await vi.waitFor(() => {
+      expect(service.isLoading()).toBe(false);
+    });
+
     expect(service.liveError()).toBeNull();
     expect(service.telemetryRecords().length).toBe(1);
     expect(service.telemetryRecords()[0].subjectId).toBe('Bird-1');
     expect(service.telemetryRecords()[0].species).toBe('AVIAN_MIGRATORY');
   });
 
-  it('should handle cloudflare worker error responses gracefully', () => {
+  it('should handle cloudflare worker error responses gracefully', async () => {
+    service = TestBed.inject(TelemetryStreamService);
+
+    // Satisfy the constructor mock request first
+    httpMock.expectOne('data/telemetry-mock.json').flush(mockRecordsPayload);
+
     service.setStudyId('9999999');
 
-    const req = httpMock.expectOne((request) =>
+    const liveReq = httpMock.expectOne((request) =>
       request.url.includes('wispy-surf-c9db.rublin.workers.dev'),
     );
-    req.flush('error code: 1020 access denied', { status: 403, statusText: 'Forbidden' });
+    liveReq.flush('error code: 1020 access denied', { status: 403, statusText: 'Forbidden' });
 
-    expect(service.isLoading()).toBe(false);
+    await vi.waitFor(() => {
+      expect(service.isLoading()).toBe(false);
+    });
+
     expect(service.liveError()).toBeTruthy();
-    expect(service.telemetryRecords().length).toBe(1); // Falls back to mock dataset via computed signal
+    expect(service.telemetryRecords().length).toBe(1);
   });
 
-  it('should activate mock fallback explicitly when requested', () => {
+  it('should activate mock fallback explicitly when requested', async () => {
+    service = TestBed.inject(TelemetryStreamService);
+
+    // Satisfy the constructor mock request first
+    httpMock.expectOne('data/telemetry-mock.json').flush(mockRecordsPayload);
+
     expect(service.useMockFallback()).toBe(false);
 
     service.activateMockFallback();
 
-    expect(service.useMockFallback()).toBe(true);
+    await vi.waitFor(() => {
+      expect(service.useMockFallback()).toBe(true);
+    });
+
     expect(service.liveError()).toBeNull();
     expect(service.telemetryRecords().length).toBe(1);
   });
