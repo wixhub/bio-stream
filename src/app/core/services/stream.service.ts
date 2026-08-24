@@ -1,51 +1,58 @@
-import { Service, signal, computed } from '@angular/core';
-import { httpResource, HttpParams } from '@angular/common/http';
+import { Service, signal, computed, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { BioTelemetryRecord, SpeciesType } from '../models/telemetry.model';
 
 @Service()
 export class TelemetryStreamService {
+  private readonly http = inject(HttpClient);
   private readonly workerBaseUrl = 'https://wispy-surf-c9db.rublin.workers.dev';
 
   // Reactive signals for parameters and fallback control
   public readonly selectedStudyId = signal<string>('7006760');
   public readonly useMockFallback = signal<boolean>(false);
 
-  // Resource for local static mock telemetry data
-  public readonly localMockResource = httpResource<BioTelemetryRecord[]>(
-    () => 'data/telemetry-mock.json',
-    {
-      defaultValue: [],
-    },
-  );
+  // State signals to track loading and error states for UI feedback
+  public readonly isLoading = signal<boolean>(false);
+  public readonly liveError = signal<string | null>(null);
 
-  // Dynamic resource for live telemetry streaming from Movebank via Cloudflare Worker proxy
-  public readonly liveTelemetryResource = httpResource<BioTelemetryRecord[]>(
-    () => {
-      // If mock fallback is manually forced, skip network call
-      if (this.useMockFallback()) return undefined;
+  // Store raw records fetched from live API
+  private readonly liveRecords = signal<BioTelemetryRecord[]>([]);
+  // Store local mock records as a fallback
+  private readonly localMockRecords = signal<BioTelemetryRecord[]>([]);
 
-      const studyId = this.selectedStudyId();
-      const params = new HttpParams()
-        .set('entity_type', 'event')
-        .set('study_id', studyId)
-        .set('i_can_see_data', 'true');
+  constructor() {
+    // Preload local mock dataset on initialization
+    this.loadMockDataset();
+  }
 
-      return {
-        url: this.workerBaseUrl,
-        params,
-        responseType: 'text' as const,
-      };
-    },
-    {
-      defaultValue: [],
-      // Parse raw CSV text response into typed BioTelemetryRecord array
-      parse: (responseText: unknown): BioTelemetryRecord[] => {
-        const text = typeof responseText === 'string' ? responseText : '';
-        if (!text || text.includes('error code:') || text.includes('<p>')) {
+  /**
+   * Loads local static mock telemetry data
+   */
+  private loadMockDataset(): void {
+    this.http.get<BioTelemetryRecord[]>('data/telemetry-mock.json').subscribe({
+      next: (data) => this.localMockRecords.set(data ?? []),
+      error: (err) => console.error('Failed to load local mock telemetry:', err),
+    });
+  }
+
+  /**
+   * Fetches and parses live telemetry data from Movebank via Cloudflare Worker proxy
+   */
+  public fetchLiveTelemetry(studyId: string): Observable<BioTelemetryRecord[]> {
+    let params = new HttpParams()
+      .set('entity_type', 'event')
+      .set('study_id', studyId)
+      .set('i_can_see_data', 'true');
+
+    return this.http.get(this.workerBaseUrl, { params, responseType: 'text' }).pipe(
+      map((responseText: string) => {
+        if (!responseText || responseText.includes('error code:') || responseText.includes('<p>')) {
           throw new Error('Cloudflare worker timeout or upstream Movebank error');
         }
 
-        const lines = text.split('\n').filter((l) => l.trim().length > 0);
+        const lines = responseText.split('\n').filter((l) => l.trim().length > 0);
         if (lines.length < 2) return [];
 
         const delimiter = lines[0].includes('\t') ? '\t' : ',';
@@ -84,31 +91,47 @@ export class TelemetryStreamService {
             } as BioTelemetryRecord;
           })
           .filter((record) => record.coordinates.lat !== 0 && record.coordinates.lng !== 0);
-      },
-    },
-  );
-
-  // Convenient computed signal to transparently fallback to local mock data on live error/timeout
-  public readonly telemetryRecords = computed(() => {
-    const liveError = this.liveTelemetryResource.error();
-    const liveData = this.liveTelemetryResource.value();
-
-    if (liveError || this.useMockFallback() || (liveData && liveData.length === 0)) {
-      return this.localMockResource.value() ?? [];
-    }
-    return liveData ?? [];
-  });
-
-  public readonly isLoading = computed(
-    () => this.liveTelemetryResource.isLoading() || this.localMockResource.isLoading(),
-  );
+      }),
+      catchError((error) => {
+        console.error('Live telemetry fetch error:', error);
+        this.liveError.set(error.message || 'Failed to load live telemetry stream');
+        return throwError(() => error);
+      }),
+    );
+  }
 
   /**
-   * Triggers a query update for a new study ID
+   * Computed signal that resolves final telemetry records (live or mock fallback)
+   */
+  public readonly telemetryRecords = computed(() => {
+    if (this.useMockFallback() || this.liveError()) {
+      return this.localMockRecords();
+    }
+    return this.liveRecords();
+  });
+
+  /**
+   * Triggers a query update for a new study ID and executes live request
    */
   public setStudyId(studyId: string): void {
     this.useMockFallback.set(false);
+    this.liveError.set(null);
     this.selectedStudyId.set(studyId);
+    this.isLoading.set(true);
+
+    this.fetchLiveTelemetry(studyId).subscribe({
+      next: (records) => {
+        this.liveRecords.set(records);
+        this.isLoading.set(false);
+        if (records.length === 0) {
+          this.liveError.set(`No valid spatial telemetry points found for Study ID "${studyId}".`);
+        }
+      },
+      error: () => {
+        this.liveRecords.set([]);
+        this.isLoading.set(false);
+      },
+    });
   }
 
   /**
@@ -116,6 +139,7 @@ export class TelemetryStreamService {
    */
   public activateMockFallback(): void {
     this.useMockFallback.set(true);
+    this.liveError.set(null);
   }
 
   /**
