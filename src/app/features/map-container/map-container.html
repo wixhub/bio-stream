@@ -7,22 +7,40 @@
 
     <!-- Data Source Switcher Toolbar -->
     <div class="data-source-switcher">
-      <button type="button" class="btn-source" (click)="switchToMockDataset()">
-        Load Mock Data
-      </button>
       <div class="filter-group">
-        <select id="studySelect" (change)="onStudyChange($event)" class="study-dropdown">
-          <option>Select Research Study</option>
-          <option value="7006760">Northern Elephant Seals (Seals)</option>
-          <option value="2911040">Galapagos Albatrosses (Birds)</option>
-          <option value="10700240">Galapagos Tortoises (Reptiles)</option>
-        </select>
+        <label for="studyInput">Study ID:</label>
+        <input
+          id="studyInput"
+          type="text"
+          class="study-input"
+          [value]="selectedStudyId()"
+          (input)="onStudyChange($event)"
+          placeholder="Enter Study ID..."
+        />
       </div>
-      <button type="button" class="btn-source live" (click)="switchToLiveDataset(selectedStudyId)">
-        Fetch Live API
+
+      <button
+        type="button"
+        class="btn-source live"
+        [disabled]="telemetryService.isLoading()"
+        (click)="switchToLiveDataset(selectedStudyId())"
+      >
+        @if (telemetryService.isLoading()) {
+          <span class="spinner"></span> Loading...
+        } @else {
+          Fetch Live API
+        }
       </button>
     </div>
   </header>
+
+  <!-- Auto-closing Error Notification Banner (12 seconds) -->
+  @if (errorMessage()) {
+    <div class="error-banner">
+      <span>⚠️ {{ errorMessage() }}</span>
+      <button type="button" class="close-btn" (click)="dismissError()">×</button>
+    </div>
+  }
 
   <section class="viewport-section">
     <div class="spatial-viewport">
@@ -37,4 +55,40 @@
       </div>
     </div>
   </section>
+
+  <!-- Footer with Data Attribution, MIT License and Author Links -->
+  <footer class="app-footer">
+    <div class="attribution-info">
+      <span
+        >Data: <a href="https://www.movebank.org" target="_blank" rel="noopener">Movebank</a> &
+        study contributors</span
+      >
+      <span>•</span>
+      <span
+        >Maps: <a href="https://carto.com" target="_blank" rel="noopener">CARTO</a>,
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"
+          >OpenStreetMap</a
+        ></span
+      >
+      <span>•</span>
+      <span
+        >License:
+        <a
+          href="https://github.com/wixhub/bio-stream/blob/main/LICENSE"
+          target="_blank"
+          rel="noopener"
+          >MIT</a
+        ></span
+      >
+    </div>
+    <div class="author-attribution">
+      Engineered by
+      <a href="https://github.com/wixhub" target="_blank" rel="noopener">wixhub</a> (<a
+        href="https://github.com/wixhub/bio-stream"
+        target="_blank"
+        rel="noopener"
+        >Repository Source</a
+      >)
+    </div>
+  </footer>
 </main>

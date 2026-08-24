@@ -28,7 +28,7 @@ export class LeafletMapService {
 
     this.mapInstance = L.map(containerId, {
       zoomControl: false,
-      attributionControl: false,
+      attributionControl: true,
     }).setView(initialCenter, zoom);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -45,7 +45,8 @@ export class LeafletMapService {
   }
 
   /**
-   * Renders telemetry points as markers and connects them with vector polylines
+   * Renders telemetry points as markers, connects them with vector polylines,
+   * and automatically fits map bounds to the active data points.
    */
   public renderTelemetryPoints(records: readonly BioTelemetryRecord[]): void {
     if (!this.mapInstance) return;
@@ -79,6 +80,15 @@ export class LeafletMapService {
 
       this.markerLayerGroup.addLayer(marker);
     });
+
+    if (latLngs.length > 0) {
+      // Automatically zoom and pan map to tightly fit all rendered telemetry points
+      const bounds = L.latLngBounds(latLngs);
+      this.mapInstance.fitBounds(bounds, {
+        padding: [60, 60],
+        maxZoom: 9, // Prevent over-zooming when points are sparse or few
+      });
+    }
 
     if (latLngs.length > 1) {
       const polyline = L.polyline(latLngs, {

@@ -13,7 +13,9 @@ The application is built as an enterprise-grade Angular single-page application 
 ## ⚡ Key Technical Pillars
 
 - **Signals & Computed Reactivity**: Fine-grained state synchronization using Angular Signals (`signal`, `computed`, `effect`) and seamless RxJS bridging via `toSignal()`.
+
 - **Standalone Components**: Strict modular standalone architecture optimized with lazy-loaded deferrable views (`@defer (on idle)`).
+
 - **GIS Map Encapsulation**: Decoupled Leaflet integration managed via enterprise services with rigorous `DestroyRef` memory cleanup lifecycles.
 
 ---
@@ -26,18 +28,24 @@ The application is built as an enterprise-grade Angular single-page application 
 
 ## 🌐 Data Source & Backend Proxy
 
-Cloudflare Worker Integration: The application utilizes a dedicated serverless worker as an online data source and API proxy. It securely fetches live telemetry streams from the Movebank API, handles CORS limitations, and parses raw CSV responses into strongly-typed data models.
+- **Cloudflare Worker Integration**: The application utilizes a dedicated serverless worker as an online data source and API proxy. It securely fetches live telemetry streams from the Movebank API, handles CORS limitations, and parses raw CSV responses into strongly-typed data models.
 
-🔗 **[View Worker on Cloudflare Workers](https://wispy-surf-c9db.rublin.workers.dev/)**
+- **Backend Endpoint**: 🔗 **[View Worker on Cloudflare Workers](https://wispy-surf-c9db.rublin.workers.dev/)**
+
+- **Data Attribution**: Telemetry data is accessed via the **Movebank API** (www.movebank.org) and provided by individual study contributors. Map tiles are powered by **CARTO** under CC BY 3.0, utilizing data from **OpenStreetMap** contributors.
 
 ---
 
 ## 🌟 Key Features
 
 - **Interactive Leaflet Mapping**: Real-time rendering of spatial coordinates, color-coded species markers and movement tracking polylines.
+
 - **Dual Data Sources**: Seamlessly switch between local static mock data (`telemetry-mock.json`) and live telemetry feeds from Movebank via a custom Cloudflare Worker proxy (`wispy-surf-c9db.rublin.workers.dev`).
+
 - **Multi-Study Support**: Easily toggle between public research studies (e.g., Northern Elephant Seals, Galapagos Albatrosses, Galapagos Tortoises) right from the UI HUD.
+
 - **Robust Error Handling & Fallbacks**: Automated fallback mechanisms if upstream Movebank API requests experience timeouts or rate limits (HTTP 522 Cloudflare errors).
+
 - **Advanced Filtering & Analytics**: Filter streams dynamically by species classifications (`AVIAN_MIGRATORY`, `MARINE_CETACEAN`, `TERRESTRIAL_UNGULATE`) and physiological thresholds (Heart Rate ranges).
 
 ---
@@ -45,45 +53,47 @@ Cloudflare Worker Integration: The application utilizes a dedicated serverless w
 ## 🛠️ Core Services & Components
 
 - **`LeafletMapService`**: Manages the Leaflet map lifecycle, layer groups, custom circle markers, popups and polyline vectors.
+
 - **`TelemetryStreamService`**: Handles HTTP communication with the Cloudflare Worker proxy, CSV parsing into strongly-typed telemetry models and fallback logic.
+
 - **`MapContainer`**: The master orchestration container combining HUD controls, reactive stream routing and analytics components.
 
 ## Project Structure
 
 ```text
 bio-stream/
-├── public/
-│ └── data/
-│ └── telemetry-mock.json
-├── src/
-│ ├── app/
-│ │ ├── core/
-│ │ │ ├── models/
-│ │ │ │ └── telemetry.model.ts
-│ │ │ └── services/
-│ │ │ ├── leaflet-map.service.ts
-│ │ │ └── telemetry-stream.service.ts
-│ │ ├── features/
-│ │ │ ├── map-container/
-│ │ │ │ ├── map-container.component.ts
-│ │ │ │ ├── map-container.component.html
-│ │ │ │ └── map-container.component.scss
-│ │ │ ├── telemetry-filters/
-│ │ │ │ ├── telemetry-filters.component.ts
-│ │ │ │ ├── telemetry-filters.component.html
-│ │ │ │ └── telemetry-filters.component.scss
-│ │ │ └── telemetry-analytics/
-│ │ │ ├── telemetry-analytics.component.ts
-│ │ │ ├── telemetry-analytics.component.html
-│ │ │ └── telemetry-analytics.component.scss
-│ │ ├── app.config.ts
-│ │ ├── app.component.ts
-│ │ └── app.component.html
-│ ├── styles.scss
-│ └── main.ts
-├── angular.json
-├── package.json
-└── README.md
+    ├── public/
+    │ └── data/
+    │ └── telemetry-mock.json
+    ├── src/
+    │ ├── app/
+    │ │ ├── core/
+    │ │ │ ├── models/
+    │ │ │ │ └── telemetry.model.ts
+    │ │ │ └── services/
+    │ │ │ ├── leaflet-map.service.ts
+    │ │ │ └── telemetry-stream.service.ts
+    │ │ ├── features/
+    │ │ │ ├── map-container/
+    │ │ │ │ ├── map-container.component.ts
+    │ │ │ │ ├── map-container.component.html
+    │ │ │ │ └── map-container.component.scss
+    │ │ │ ├── telemetry-filters/
+    │ │ │ │ ├── telemetry-filters.component.ts
+    │ │ │ │ ├── telemetry-filters.component.html
+    │ │ │ │ └── telemetry-filters.component.scss
+    │ │ │ └── telemetry-analytics/
+    │ │ │ ├── telemetry-analytics.component.ts
+    │ │ │ ├── telemetry-analytics.component.html
+    │ │ │ └── telemetry-analytics.component.scss
+    │ │ ├── app.config.ts
+    │ │ ├── app.ts
+    │ │ └── app.html
+    │ ├── styles.scss
+    │ └── main.ts
+    ├── angular.json
+    ├── package.json
+    └── README.md
 ```
 
 ## Getting Started
@@ -164,3 +174,13 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## ⚖️ License & Attribution
+
+- **Software License**: This project is open-source software licensed under the **[MIT License](./LICENSE)**.
+
+- **Data & Map Attribution**:
+
+  - Animal tracking data provided by **Movebank** (www.movebank.org) and individual researchers.
+
+  - Map tiles by **CARTO**, under CC BY 3.0. Data by **OpenStreetMap** contributors.

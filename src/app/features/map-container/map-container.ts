@@ -25,8 +25,8 @@ export class MapContainer implements AfterViewInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly cd = inject(ChangeDetectorRef);
 
-  // Input model for custom study ID entry in the template
-  public selectedStudyId: string = '7006760';
+  // Signal for custom study ID entry defaulting to the active Albatrosses dataset
+  public readonly selectedStudyId = signal<string>('2911040');
 
   // State signal to manage error notifications with a 12-second timeout
   public readonly errorMessage = signal<string | null>(null);
@@ -42,14 +42,17 @@ export class MapContainer implements AfterViewInit {
   public readonly filteredRecords = signal<BioTelemetryRecord[]>([]);
 
   constructor() {
-    // Monitor live stream resources and trigger persistent error banners if upstream failures occur
+    // Monitor live stream errors or empty results and trigger informative banners
     effect(() => {
-      const liveError = this.telemetryService.liveTelemetryResource.error();
-      const isMockActive = this.telemetryService.useMockFallback();
+      const liveError = this.telemetryService.liveError();
+      const currentId = this.selectedStudyId();
 
-      if (liveError && !isMockActive) {
+      // If a custom ID fails, inform the user that we fell back to default albatrosses (2911040)
+      if (liveError && currentId !== '2911040') {
+        this.selectedStudyId.set('2911040');
+        this.switchToLiveDataset('2911040');
         this.showAutoClosingError(
-          `Failed to load live telemetry stream for Study ID "${this.telemetryService.selectedStudyId()}". Reverting to local mock dataset.`,
+          `Study ID "${currentId}" returned no data or failed. Reverting back to default Galapagos Albatrosses (2911040).`,
         );
       }
     });
@@ -86,6 +89,9 @@ export class MapContainer implements AfterViewInit {
   public ngAfterViewInit(): void {
     this.mapService.initializeMap('leaflet-spatial-canvas', [15.0, 10.0], 3);
 
+    // Automatically fetch default active albatrosses data on startup
+    this.telemetryService.setStudyId('2911040');
+
     this.destroyRef.onDestroy(() => {
       this.mapService.disposeMap();
     });
@@ -120,8 +126,9 @@ export class MapContainer implements AfterViewInit {
     this.cd.markForCheck();
   }
 
-  public onStudyChange(event: any): void {
-    this.selectedStudyId = event.target.value;
+  public onStudyChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.selectedStudyId.set(input.value);
   }
 
   public onFilterUpdated(newFilters: TelemetryFilterModel): void {
@@ -134,13 +141,5 @@ export class MapContainer implements AfterViewInit {
   public switchToLiveDataset(studyId: string): void {
     this.dismissError();
     this.telemetryService.setStudyId(studyId);
-  }
-
-  /**
-   * Manually forces fallback to local static mock data.
-   */
-  public switchToMockDataset(): void {
-    this.dismissError();
-    this.telemetryService.activateMockFallback();
   }
 }
