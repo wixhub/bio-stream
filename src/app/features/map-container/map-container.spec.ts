@@ -1,6 +1,6 @@
 /// <reference types="vitest/globals" />
 
-import { TestBed } from '@angular/core/testing';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { MapContainer } from './map-container';
 import { LeafletMapService } from '../../core/services/map.service';
 import { TelemetryStreamService } from '../../core/services/stream.service';
@@ -8,10 +8,10 @@ import { signal } from '@angular/core';
 
 describe('MapContainer', () => {
   let component: MapContainer;
+  let fixture: ComponentFixture<MapContainer>;
   let mockMapService: Partial<LeafletMapService>;
   let mockTelemetryService: Partial<TelemetryStreamService>;
 
-  // Setup testing module and mock service dependencies before each test
   beforeEach(async () => {
     mockMapService = {
       initializeMap: vi.fn(),
@@ -51,7 +51,7 @@ describe('MapContainer', () => {
       })
       .compileComponents();
 
-    const fixture = TestBed.createComponent(MapContainer);
+    fixture = TestBed.createComponent(MapContainer);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
@@ -89,7 +89,6 @@ describe('MapContainer', () => {
   });
 
   it('should handle error dismissal properly', () => {
-    // Force set an error message
     (component as unknown as { errorMessage: ReturnType<typeof signal> }).errorMessage.set(
       'Test error banner',
     );
@@ -100,7 +99,7 @@ describe('MapContainer', () => {
     expect(component.errorMessage()).toBeNull();
   });
 
-  it('should filter telemetry records correctly according to criteria', () => {
+  it('should filter telemetry records correctly according to criteria', async () => {
     const filterModel = {
       species: 'AVIAN_MIGRATORY' as const,
       minHeartRate: 50,
@@ -109,12 +108,14 @@ describe('MapContainer', () => {
     };
 
     component.onFilterUpdated(filterModel);
+    fixture.detectChanges();
+    await Promise.resolve();
 
     expect(component.filteredRecords().length).toBe(1);
     expect(component.filteredRecords()[0].subjectId).toBe('Albatross-1');
   });
 
-  it('should return empty filtered records when live stream filter is disabled', () => {
+  it('should return empty filtered records when live stream filter is disabled', async () => {
     const filterModel = {
       species: 'ALL' as const,
       minHeartRate: 0,
@@ -123,6 +124,8 @@ describe('MapContainer', () => {
     };
 
     component.onFilterUpdated(filterModel);
+    fixture.detectChanges();
+    await Promise.resolve();
 
     expect(component.filteredRecords().length).toBe(0);
   });
