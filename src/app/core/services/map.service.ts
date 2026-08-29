@@ -1,6 +1,7 @@
 import { Service, DestroyRef, inject } from '@angular/core';
 import * as L from 'leaflet';
 import { BioTelemetryRecord } from '../models/telemetry.model';
+import { environment } from '../../../environments/environment';
 
 @Service()
 export class LeafletMapService {
@@ -31,9 +32,14 @@ export class LeafletMapService {
       attributionControl: true,
     }).setView(initialCenter, zoom);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-    }).addTo(this.mapInstance);
+    L.tileLayer(
+      `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${environment.cartoApiKey}`,
+      {
+        attribution: '&copy; CARTO',
+        maxZoom: 19,
+        subdomains: 'abcd',
+      },
+    ).addTo(this.mapInstance);
 
     this.markerLayerGroup.addTo(this.mapInstance);
     this.vectorLayerGroup.addTo(this.mapInstance);

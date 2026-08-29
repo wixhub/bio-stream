@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "cp src/environments/environment.example.ts src/environments/environment.ts && sed -i \"s|'YOUR_CARTO_API_KEY_HERE'|'$CARTO_API_KEY'|g\" src/environments/environment.ts && ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

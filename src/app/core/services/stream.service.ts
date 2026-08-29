@@ -93,7 +93,6 @@ export class TelemetryStreamService {
           .filter((record) => record.coordinates.lat !== 0 && record.coordinates.lng !== 0);
       }),
       catchError((error) => {
-        console.error('Live telemetry fetch error:', error);
         this.liveError.set(error.message || 'Failed to load live telemetry stream');
         return throwError(() => error);
       }),

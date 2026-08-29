@@ -48,12 +48,18 @@ export class MapContainer implements AfterViewInit {
       const currentId = this.selectedStudyId();
 
       // If a custom ID fails, inform the user that we fell back to default albatrosses (2911040)
-      if (liveError && currentId !== '2911040') {
-        this.selectedStudyId.set('2911040');
-        this.switchToLiveDataset('2911040');
-        this.showAutoClosingError(
-          `Study ID "${currentId}" returned no data or failed. Reverting back to default Galapagos Albatrosses (2911040).`,
-        );
+      if (liveError) {
+        if (currentId == '2911040') {
+          this.showAutoClosingError(
+            `Study ID "${currentId}" returned no data or failed. Please check your internet connection or try again later.`,
+          );
+        } else {
+          this.selectedStudyId.set('2911040');
+          this.switchToLiveDataset('2911040');
+          this.showAutoClosingError(
+            `Study ID "${currentId}" returned no data or failed. Reverting back to default Galapagos Albatrosses (2911040). Verify the ID or check API limits.`,
+          );
+        }
       }
     });
 
